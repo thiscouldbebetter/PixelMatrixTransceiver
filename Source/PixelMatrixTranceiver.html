@@ -1,0 +1,728 @@
+
+<html>
+ 
+<body>
+
+<div id="divUi">
+
+	<h3>Pixel Matrix Transceiver</h3>
+
+	<p>
+		Specify a message to encode and transmission parameters,
+		then click the Start Transmission button to transmit the message
+		encoded as a series of pixel matrices.
+	</p>
+
+	<div id="divProtocol" style="border:1px solid;">
+
+		<label>Protocol:</label>
+		<div>
+			<label>Frames per Second:</label>
+			<input id="inputFramesPerSecond" type="number" value="1"></input>
+		</div>
+	 
+		<div>
+			<label>Frame Size in Cells:</label>
+			<input id="inputFrameSizeInCellsX" type="number" value="10"></input>
+			<label>x</label>
+			<input id="inputFrameSizeInCellsY" type="number" value="10"></input>
+		</div>
+	</div>
+	 
+	<div id="divTransmitter" style="border:1px solid;">
+	 
+		<label>Transmitter</label>
+		<div>
+			<label>Frame Size in Pixels:</label>
+			<input id="inputFrameSizeInPixelsX" type="number" value="100"></input>
+			<label>x</label>
+			<input id="inputFrameSizeInPixelsY" type="number" value="100"></input>
+		</div>
+		<div>
+			<label>Message:</label>
+			<input id="inputMessage" value="This is a test!"></input>
+		</div>
+	</div>
+	 
+	<div id="divReceiver" style="border:1px solid;">
+	 
+		<label>Receiver:</label>
+		<div>
+			<label>Frame Corner Positions:</label>
+			<div>
+				<label>NW:</label>
+				<input id="inputCornerNWPosX" value="0"></input>
+				<label>x</label>
+				<input id="inputCornerNWPosY" value="0"></input>
+			</div>	
+	 
+	 
+			<div>
+				<label>NE:</label>
+				<input id="inputCornerNEPosX" value="100"></input>
+				<label>x</label>
+				<input id="inputCornerNEPosY" value="0"></input>
+			</div>
+	 
+			<div>
+				<label>SE:</label>
+				<input id="inputCornerSEPosX" value="100"></input>
+				<label>x</label>
+				<input id="inputCornerSEPosY" value="100"></input>
+			</div>
+	 
+			<div>
+				<label>SW:</label>
+				<input id="inputCornerSWPosX" value="0"></input>
+				<label>x</label>
+				<input id="inputCornerSWPosY" value="100"></input>
+			</div>
+		</div>
+	</div>
+	 
+	<div>
+		<button id="buttonTransmissionStart" onclick="buttonTransmissionStart_Clicked();">Start Transmission</button>
+	</div>
+	 
+	<div id="divOutput">
+	</div>
+
+</div>
+
+<script>
+
+// events
+
+function buttonTransmissionStart_Clicked()
+{
+	var inputFramesPerSecond = document.getElementById("inputFramesPerSecond");
+	var inputFrameSizeInCellsX = document.getElementById("inputFrameSizeInCellsX");
+	var inputFrameSizeInCellsY = document.getElementById("inputFrameSizeInCellsY");
+	var inputFrameSizeInPixelsX = document.getElementById("inputFrameSizeInPixelsX");
+	var inputFrameSizeInPixelsY = document.getElementById("inputFrameSizeInPixelsY");
+	var inputMessage = document.getElementById("inputMessage");
+	var inputCornerNWPosX = document.getElementById("inputCornerNWPosX");
+	var inputCornerNWPosY = document.getElementById("inputCornerNWPosY");
+	var inputCornerNEPosX = document.getElementById("inputCornerNEPosX");
+	var inputCornerNEPosY = document.getElementById("inputCornerNEPosY");
+	var inputCornerSEPosX = document.getElementById("inputCornerSEPosX");
+	var inputCornerSEPosY = document.getElementById("inputCornerSEPosY");
+	var inputCornerSWPosX = document.getElementById("inputCornerSWPosX");
+	var inputCornerSWPosY = document.getElementById("inputCornerSWPosY");
+ 
+	var framesPerSecond = parseInt(inputFramesPerSecond.value);
+	var frameSizeInCellsX = parseInt(inputFrameSizeInCellsX.value);
+	var frameSizeInCellsY = parseInt(inputFrameSizeInCellsY.value);
+	var frameSizeInPixelsX = parseInt(inputFrameSizeInPixelsX.value);
+	var frameSizeInPixelsY = parseInt(inputFrameSizeInPixelsY.value);
+	var message = inputMessage.value;
+	var cornerNWPosX = parseInt(inputCornerNWPosX.value);
+	var cornerNWPosY = parseInt(inputCornerNWPosY.value);
+	var cornerNEPosX = parseInt(inputCornerNEPosX.value);
+	var cornerNEPosY = parseInt(inputCornerNEPosY.value);
+	var cornerSEPosX = parseInt(inputCornerSEPosX.value);
+	var cornerSEPosY = parseInt(inputCornerSEPosY.value);
+	var cornerSWPosX = parseInt(inputCornerSWPosX.value);
+	var cornerSWPosY = parseInt(inputCornerSWPosY.value);
+ 
+	var frameSizeInCells = new Coords(frameSizeInCellsX, frameSizeInCellsY);
+	var frameSizeInPixels = new Coords(frameSizeInPixelsX, frameSizeInPixelsY);
+ 
+	var cellCornerPosNW = new Coords(cornerNWPosX, cornerNWPosY);
+	var cellCornerPosNE = new Coords(cornerNEPosX, cornerNEPosY);
+	var cellCornerPosSE = new Coords(cornerSEPosX, cornerSEPosY);
+	var cellCornerPosSW = new Coords(cornerSWPosX, cornerSWPosY);
+	 
+	var display = new Display(20, frameSizeInPixels);
+	var transmitter = new Transmitter(frameSizeInCells);
+	var receiver = new Receiver
+	(
+		frameSizeInCells,
+		[
+			cellCornerPosNW,
+			cellCornerPosNE,
+			cellCornerPosSE,
+			cellCornerPosSW,
+		]
+	);
+ 
+	Globals.Instance.initialize
+	(
+		framesPerSecond,
+		display,
+		transmitter,
+		receiver,
+		message
+	);
+}
+ 
+// classes 
+ 
+class Converter
+{
+	// conversion
+ 
+	static bitsToString(bitsToConvert, bitsPerChar)
+	{
+		var returnValue = "";
+ 
+		var bitOffset = 0;
+ 
+		while (bitOffset < bitsToConvert.length)
+		{
+			var charCodeSoFar = 0;
+ 
+			for (var i = 0; i < bitsPerChar; i++)
+			{
+				var bit = bitsToConvert[bitOffset];
+				var bitValueInPlace = bit << i;
+				charCodeSoFar += bitValueInPlace;
+				bitOffset++;
+			}
+ 
+			returnValue += String.fromCharCode(charCodeSoFar);
+		}
+ 
+		return returnValue;
+	}
+ 
+	static charToBits(charToConvert, bitsPerChar)
+	{
+		var returnValues = [];
+		var charAsInteger = ("" + charToConvert).charCodeAt(0);
+		for (var i = 0; i < bitsPerChar; i++)
+		{
+			var bit = (charAsInteger >> i) & 1;
+			returnValues.push(bit);
+		}
+		 
+		return returnValues;
+	}
+
+	static stringToBits(stringToConvert, bitsPerChar)
+	{
+		var returnValues = [];
+
+		for (var i = 0; i < stringToConvert.length; i++)
+		{
+			var charToConvert = stringToConvert[i];
+			var charAsBits = Converter.charToBits(charToConvert, bitsPerChar);
+			returnValues = returnValues.concat(charAsBits); 
+		}
+ 
+		return returnValues;
+	}
+ 
+}
+ 
+class Coords
+{
+	constructor(x, y)
+	{
+		this.x = x;
+		this.y = y;
+	}
+
+	// instances
+ 
+	static Instances()
+	{
+		if (Coords._instances == null)
+		{
+			Coords._instances = new Coords_Instances();
+		}
+		return Coords._instances;
+	}
+
+	// methods
+
+	add(other)
+	{
+		this.x += other.x;
+		this.y += other.y;
+		return this;
+	}
+ 
+	clone()
+	{
+		return new Coords(this.x, this.y);
+	}
+ 
+	divide(other)
+	{
+		this.x /= other.x;
+		this.y /= other.y;
+		return this;
+	}
+ 
+	multiply(other)
+	{
+		this.x *= other.x;
+		this.y *= other.y;
+		return this;
+	}
+ 
+	multiplyScalar(scalar)
+	{
+		this.x *= scalar;
+		this.y *= scalar;
+		return this;
+	}
+ 
+	overwriteWith(other)
+	{
+		this.x = other.x;
+		this.y = other.y;
+		return this;
+	}
+}
+ 
+
+class Coords_Instances
+{
+	constructor()
+	{
+		this.Halves = new Coords(.5, .5);
+		this.Ones = new Coords(1, 1);
+		this.Zeroes = new Coords(0, 0);
+	}
+}
+
+class Display
+{
+	constructor(fontHeightInPixels, sizeInPixels)
+	{
+		this.fontHeightInPixels = fontHeightInPixels;
+		this.sizeInPixels = sizeInPixels;
+	}
+
+	clear()
+	{
+		this.drawRectangle
+		(
+			Coords.Instances().Zeroes,
+			this.sizeInPixels,
+			"White",
+			"Gray"
+		);
+	}
+
+	drawRectangle(pos, size, colorFill, colorBorder)
+	{
+		this.graphics.fillStyle = colorFill;
+		this.graphics.fillRect
+		(
+			pos.x, pos.y,
+			size.x, size.y
+		);
+ 
+		if (colorBorder != null)
+		{
+			this.graphics.strokeStyle = colorBorder;
+			this.graphics.strokeRect
+			(
+				pos.x, pos.y,
+				size.x, size.y
+			);
+		}
+	}
+ 
+	drawTextAtPos(text, pos, color)
+	{
+		this.graphics.fillStyle = color;
+		this.graphics.fillText
+		(
+			text, pos.x, pos.y
+		);
+	}
+ 
+	initialize()
+	{
+		var canvas = document.createElement("canvas");
+		canvas.width = this.sizeInPixels.x;
+		canvas.height = this.sizeInPixels.y;
+ 
+		this.graphics = canvas.getContext("2d");
+		this.graphics.font = "" + this.fontHeightInPixels + "px sans-serif";
+ 
+		var divOutput = document.getElementById("divOutput");
+ 
+		divOutput.appendChild(canvas);
+ 
+	}
+ 
+	intensityOfPixelAtPos(pixelPos)
+	{
+		var pixelAsComponentsRGBA = this.graphics.getImageData
+		(
+			pixelPos.x, pixelPos.y, 1, 1	
+		).data;
+ 
+		var componentMax = 255;
+		var pixelIntensity = 
+			(
+				pixelAsComponentsRGBA[0]
+				+ pixelAsComponentsRGBA[1]
+				+ pixelAsComponentsRGBA[2]
+			) 
+			/ 
+			(componentMax * 3);
+ 
+		return pixelIntensity;
+	}
+ 
+}
+ 
+class Globals
+{
+	static Instance = new Globals();
+
+	initialize
+	(
+		framesPerSecond, display, transmitter, receiver, message
+	)
+	{
+		this.display = display;
+		this.display.initialize();
+ 
+		this.transmitter = transmitter;
+ 
+		this.receiver = receiver;
+ 
+		var millisecondsPerSecond = 1000;
+		var millisecondsPerTimerTick = millisecondsPerSecond / framesPerSecond;
+		this.timer = setInterval
+		(
+			this.handleEventTimerTick.bind(this),
+			millisecondsPerTimerTick
+		);
+ 
+		this.transmitter.sendMessage(message)
+	}
+ 
+	// events
+ 
+	handleEventTimerTick()
+	{
+		this.transmitter.frameAdvanceAndDrawToDisplay
+		(
+			this.display
+		);
+ 
+		var messageSegment = this.receiver.readFrameFromDisplayAsString
+		(
+			this.display
+		);
+	 
+		this.receiver.drawToDisplay(this.display);
+	}
+}
+ 
+class Receiver
+{
+	constructor(frameSizeInCells, cornerCellPositionsClockwiseFromNW)
+	{
+		this.frameSizeInCells = frameSizeInCells;
+		this.cornerCellPositionsClockwiseFromNW = 
+			cornerCellPositionsClockwiseFromNW;
+	 
+		this.bitsPerChar = 8; // hack
+	}
+
+	cellCenter(cellPosInCells)
+	{
+		var cellCenterInCells = cellPosInCells.clone().add
+		(
+			Coords.Instances().Halves
+		);
+ 
+		var cornerNW = this.cornerCellPosNW();
+		var cornerNE = this.cornerCellPosNE();
+			var cornerSE = this.cornerCellPosSE();
+		var cornerSW = this.cornerCellPosSW();
+ 
+		var cellCenterInFrames = cellCenterInCells.clone().divide
+		(
+			this.frameSizeInCells
+		); 
+ 
+		var cellLeft = cornerNW.clone().multiplyScalar
+		(
+			1 - cellCenterInFrames.y
+		).add
+		(
+			cornerSW.clone().multiplyScalar
+			(
+				cellCenterInFrames.y
+			)
+		);
+		 
+		var cellRight = cornerNE.clone().multiplyScalar
+		(
+			1 - cellCenterInFrames.y
+		).add
+		(
+			cornerSE.clone().multiplyScalar
+			(
+				cellCenterInFrames.y
+			)
+		);
+ 
+		var cellCenter = cellLeft.clone().multiplyScalar
+		(
+			1 - cellCenterInFrames.x
+		).add
+		(
+			cellRight.clone().multiplyScalar
+			(
+				cellCenterInFrames.x
+			)
+		);
+ 
+ 
+		return cellCenter;
+	}
+ 
+	cornerCellPosNE()
+	{
+		return this.cornerCellPositionsClockwiseFromNW[1];
+	}
+ 
+	cornerCellPosNW()
+	{
+		return this.cornerCellPositionsClockwiseFromNW[0];
+	}
+ 
+	cornerCellPosSE()
+	{
+		return this.cornerCellPositionsClockwiseFromNW[2];
+	}
+ 
+	cornerCellPosSW()
+	{
+		return this.cornerCellPositionsClockwiseFromNW[3];
+	}
+ 
+	drawToDisplay(display)
+	{
+		var cellPosInCells = new Coords();
+ 
+		for (var y = 0; y < this.frameSizeInCells.y; y++)
+		{
+			cellPosInCells.y = y;
+ 
+			for (var x = 0; x < this.frameSizeInCells.x; x++)
+			{
+				cellPosInCells.x = x;
+ 
+				var cellCenterInPixels = this.cellCenter
+				(
+					cellPosInCells
+				);  
+ 
+				display.drawRectangle
+				(
+					cellCenterInPixels,
+					Coords.Instances().Ones,
+					"Cyan"
+				);
+			}
+		}
+ 
+		display.drawTextAtPos
+		(
+			this.messageSegmentForFrameCurrent,
+			new Coords
+			(
+				0, 
+				display.sizeInPixels.y
+			),
+			"Cyan"
+		);
+	}
+ 
+	readFrameFromDisplayAsString(display)
+	{
+		var messageSegmentAsBits = [];
+ 
+		var cellPosInCells = new Coords();
+ 
+		for (var y = 0; y < this.frameSizeInCells.y; y++)
+		{
+			cellPosInCells.y = y;
+ 
+			for (var x = 0; x < this.frameSizeInCells.x; x++)
+			{
+				cellPosInCells.x = x;
+ 
+				var cellCenterInPixels = this.cellCenter
+				(
+					cellPosInCells
+				);
+		 
+				var pixelIntensity = display.intensityOfPixelAtPos
+				(
+					cellCenterInPixels
+				);
+ 
+				var bitForCell;
+ 
+				if (pixelIntensity < .5)
+				{
+					bitForCell = 0;
+				}
+				else // (pixelIntensity >= .5)
+				{
+					bitForCell = 1;
+				}
+ 
+				messageSegmentAsBits.push(bitForCell);
+			}
+		}
+ 
+		var messageSegmentAsString = Converter.bitsToString
+		(
+			messageSegmentAsBits,
+			this.bitsPerChar
+		);
+ 
+		this.messageSegmentForFrameCurrent = messageSegmentAsString;
+	}
+}
+ 
+class Transmitter
+{
+	constructor(frameSizeInCells)
+	{
+		this.frameSizeInCells = frameSizeInCells;
+
+		this.messageToSendAsString = null;
+		this.charOffsetWithinMessage = 0;
+
+		var cellsPerFrame = 
+			this.frameSizeInCells.x * this.frameSizeInCells.y;
+		var bitsPerCell = 1;
+		var bitsPerFrame = cellsPerFrame * bitsPerCell;
+
+		this.bitsPerChar = 8;
+
+		this.frameSizeInChars = Math.floor(bitsPerFrame / this.bitsPerChar);
+	}
+
+	frameAdvanceAndDrawToDisplay(display)
+	{
+		if (this.messageToSendAsString != null)
+		{
+			var messageSegmentToSend = this.messageToSendAsString.substr
+			(
+				this.charOffsetWithinMessage,
+				this.frameSizeInChars
+			);
+ 
+			var messageSegmentToSendAsBits = Converter.stringToBits
+			(
+				messageSegmentToSend,
+				this.bitsPerChar
+			);
+ 
+			var messageSegmentToSendAsFrame = new DataFrame
+			(
+				this.frameSizeInCells,
+				messageSegmentToSendAsBits
+			);
+
+			var charOffsetNext =
+				this.charOffsetWithinMessage + this.frameSizeInChars;
+
+			if (charOffsetNext < this.messageToSendAsString.length)
+			{
+				this.charOffsetWithinMessage = charOffsetNext;
+			}
+
+			messageSegmentToSendAsFrame.drawToDisplay(display);
+		}
+	}
+
+	sendMessage(messageToSendAsString)
+	{
+		this.messageToSendAsString = messageToSendAsString;
+		this.charOffsetWithinMessage = 0;
+	}
+}
+ 
+class DataFrame
+{
+	constructor(sizeInCells, bits)
+	{
+		this.sizeInCells = sizeInCells;
+		this.bits = bits;
+	}
+
+	drawToDisplay(display)
+	{
+		display.clear();
+ 
+		var cellPos = new Coords();
+		var cellPosInPixels = new Coords();
+		var cellSizeInPixels = display.sizeInPixels.clone().divide
+		(
+			this.sizeInCells
+		);
+ 
+		for (var y = 0; y < this.sizeInCells.y; y++)
+		{
+			cellPos.y = y;
+			for (var x = 0; x <  this.sizeInCells.x; x++)
+			{
+				cellPos.x = x;
+ 
+				cellPosInPixels.overwriteWith
+				(
+					cellPos
+				).multiply
+				(
+					cellSizeInPixels
+				);
+				 
+				var bitIndex = y * this.sizeInCells.x + x;
+				var bitValue = this.bits[bitIndex];
+				var bitColor = (bitValue == 1 ? "White" : "Black");
+ 
+				display.drawRectangle
+				(
+					cellPosInPixels,
+					cellSizeInPixels,
+					bitColor
+				);  
+			}
+		}
+	}
+}
+ 
+// tests
+ 
+class TestFixture
+{
+	testBitToString()
+	{
+		var bitsPerChar = 8;
+		var messageAsStringToEncode = "This is a test!";
+		var messageAsBits = Converter.stringToBits
+		(
+			messageAsStringToEncode, bitsPerChar
+		);
+		var messageAsStringDecoded = Converter.bitsToString(messageAsBits, bitsPerChar);
+ 
+		if (messageAsStringToEncode != messageAsStringDecoded)
+		{
+			throw "testBitToString() failed!";
+		}
+	}
+}
+ 
+var tests = new TestFixture();
+tests.testBitToString();
+
+</script>
+</body>
+</html>
